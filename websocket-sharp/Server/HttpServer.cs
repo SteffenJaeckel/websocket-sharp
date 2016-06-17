@@ -6,7 +6,7 @@
  *
  * The MIT License
  *
- * Copyright (c) 2012-2015 sta.blockhead
+ * Copyright (c) 2012-2016 sta.blockhead
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -157,7 +157,7 @@ namespace WebSocketSharp.Server
       if (!tryCreateUri (url, out uri, out msg))
         throw new ArgumentException (msg, "url");
 
-      var host = uri.DnsSafeHost;
+      var host = getHost (uri);
       var addr = host.ToIPAddress ();
       if (!addr.IsLocal ())
         throw new ArgumentException ("The host part isn't a local host name: " + url, "url");
@@ -388,9 +388,13 @@ namespace WebSocketSharp.Server
     /// <summary>
     /// Gets or sets the name of the realm associated with the server.
     /// </summary>
+    /// <remarks>
+    /// If this property is <see langword="null"/> or empty, <c>"SECRET AREA"</c> will be used as
+    /// the name of the realm.
+    /// </remarks>
     /// <value>
     /// A <see cref="string"/> that represents the name of the realm. The default value is
-    /// <c>"SECRET AREA"</c>.
+    /// <see langword="null"/>.
     /// </value>
     public string Realm {
       get {
@@ -488,9 +492,9 @@ namespace WebSocketSharp.Server
     /// authenticate a client.
     /// </summary>
     /// <value>
-    /// A <c>Func&lt;<see cref="IIdentity"/>, <see cref="NetworkCredential"/>&gt;</c> delegate that
-    /// references the method(s) used to find the credentials. The default value is a function that
-    /// only returns <see langword="null"/>.
+    /// A <c>Func&lt;<see cref="IIdentity"/>, <see cref="NetworkCredential"/>&gt;</c> delegate
+    /// that references the method(s) used to find the credentials. The default value is
+    /// <see langword="null"/>.
     /// </value>
     public Func<IIdentity, NetworkCredential> UserCredentialsFinder {
       get {
@@ -626,9 +630,21 @@ namespace WebSocketSharp.Server
       return !(usr || port) ? "The secure connection requires a server certificate." : null;
     }
 
+    private static string convertToString (System.Net.IPAddress address)
+    {
+      return address.AddressFamily == AddressFamily.InterNetworkV6
+             ? String.Format ("[{0}]", address.ToString ())
+             : address.ToString ();
+    }
+
+    private static string getHost (Uri uri)
+    {
+      return uri.HostNameType == UriHostNameType.IPv6 ? uri.Host : uri.DnsSafeHost;
+    }
+
     private void init (string hostname, System.Net.IPAddress address, int port, bool secure)
     {
-      _hostname = hostname ?? address.ToString ();
+      _hostname = hostname ?? convertToString (address);
       _address = address;
       _port = port;
       _secure = secure;

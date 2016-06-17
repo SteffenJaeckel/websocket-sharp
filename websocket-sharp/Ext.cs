@@ -841,6 +841,10 @@ namespace WebSocketSharp
 
     internal static System.Net.IPAddress ToIPAddress (this string hostnameOrAddress)
     {
+      System.Net.IPAddress addr;
+      if (System.Net.IPAddress.TryParse (hostnameOrAddress, out addr))
+        return addr;
+
       try {
         return System.Net.Dns.GetHostAddresses (hostnameOrAddress)[0];
       }
@@ -1283,10 +1287,13 @@ namespace WebSocketSharp
 
     /// <summary>
     /// Determines whether the specified <see cref="System.Net.IPAddress"/> represents
-    /// the local IP address.
+    /// a local IP address.
     /// </summary>
+    /// <remarks>
+    /// This local means NOT REMOTE for the current host.
+    /// </remarks>
     /// <returns>
-    /// <c>true</c> if <paramref name="address"/> represents the local IP address;
+    /// <c>true</c> if <paramref name="address"/> represents a local IP address;
     /// otherwise, <c>false</c>.
     /// </returns>
     /// <param name="address">
@@ -1297,14 +1304,26 @@ namespace WebSocketSharp
       if (address == null)
         return false;
 
-      if (address.Equals (System.Net.IPAddress.Any) || System.Net.IPAddress.IsLoopback (address))
+      if (address.Equals (System.Net.IPAddress.Any))
         return true;
+
+      if (address.Equals (System.Net.IPAddress.Loopback))
+        return true;
+
+      if (Socket.OSSupportsIPv6) {
+        if (address.Equals (System.Net.IPAddress.IPv6Any))
+          return true;
+
+        if (address.Equals (System.Net.IPAddress.IPv6Loopback))
+          return true;
+      }
 
       var host = System.Net.Dns.GetHostName ();
       var addrs = System.Net.Dns.GetHostAddresses (host);
-      foreach (var addr in addrs)
+      foreach (var addr in addrs) {
         if (address.Equals (addr))
           return true;
+      }
 
       return false;
     }

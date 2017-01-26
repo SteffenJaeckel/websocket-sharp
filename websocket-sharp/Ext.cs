@@ -290,6 +290,14 @@ namespace WebSocketSharp
       return contains (0);
     }
 
+    internal static T[] Copy<T> (this T[] source, int length)
+    {
+      var dest = new T[length];
+      Array.Copy (source, 0, dest, 0, length);
+
+      return dest;
+    }
+
     internal static T[] Copy<T> (this T[] source, long length)
     {
       var dest = new T[length];
@@ -548,18 +556,18 @@ namespace WebSocketSharp
 
     internal static bool IsReserved (this ushort code)
     {
-      return code == (ushort) CloseStatusCode.Undefined ||
-             code == (ushort) CloseStatusCode.NoStatus ||
-             code == (ushort) CloseStatusCode.Abnormal ||
-             code == (ushort) CloseStatusCode.TlsHandshakeFailure;
+      return code == 1004
+             || code == 1005
+             || code == 1006
+             || code == 1015;
     }
 
     internal static bool IsReserved (this CloseStatusCode code)
     {
-      return code == CloseStatusCode.Undefined ||
-             code == CloseStatusCode.NoStatus ||
-             code == CloseStatusCode.Abnormal ||
-             code == CloseStatusCode.TlsHandshakeFailure;
+      return code == CloseStatusCode.Undefined
+             || code == CloseStatusCode.NoStatus
+             || code == CloseStatusCode.Abnormal
+             || code == CloseStatusCode.TlsHandshakeFailure;
     }
 
     internal static bool IsSupported (this byte opcode)
@@ -964,6 +972,50 @@ namespace WebSocketSharp
       return true;
     }
 
+    internal static bool TryGetUTF8DecodedString (this byte[] bytes, out string s)
+    {
+      s = null;
+
+      try {
+        s = Encoding.UTF8.GetString (bytes);
+      }
+      catch {
+        return false;
+      }
+
+      return true;
+    }
+
+    internal static bool TryGetUTF8EncodedBytes (this string s, out byte[] bytes)
+    {
+      bytes = null;
+
+      try {
+        bytes = Encoding.UTF8.GetBytes (s);
+      }
+      catch {
+        return false;
+      }
+
+      return true;
+    }
+
+    internal static bool TryOpenRead (
+      this FileInfo fileInfo, out FileStream fileStream
+    )
+    {
+      fileStream = null;
+
+      try {
+        fileStream = fileInfo.OpenRead ();
+      }
+      catch {
+        return false;
+      }
+
+      return true;
+    }
+
     internal static string Unquote (this string value)
     {
       var start = value.IndexOf ('"');
@@ -1241,11 +1293,11 @@ namespace WebSocketSharp
     }
 
     /// <summary>
-    /// Determines whether the specified <see cref="ushort"/> is in the allowable range of
-    /// the WebSocket close status code.
+    /// Determines whether the specified <see cref="ushort"/> is in
+    /// the allowable range of the WebSocket close status code.
     /// </summary>
     /// <remarks>
-    /// Not allowable ranges are the following:
+    /// Unallowable ranges are the following:
     ///   <list type="bullet">
     ///     <item>
     ///       <term>
@@ -1254,14 +1306,15 @@ namespace WebSocketSharp
     ///     </item>
     ///     <item>
     ///       <term>
-    ///       Numbers greater than 4999 are out of the reserved close status code ranges.
+    ///       Numbers greater than 4999 are out of the reserved
+    ///       close status code ranges.
     ///       </term>
     ///     </item>
     ///   </list>
     /// </remarks>
     /// <returns>
-    /// <c>true</c> if <paramref name="value"/> is in the allowable range of the WebSocket
-    /// close status code; otherwise, <c>false</c>.
+    /// <c>true</c> if <paramref name="value"/> is in the allowable
+    /// range of the close status code; otherwise, <c>false</c>.
     /// </returns>
     /// <param name="value">
     /// A <see cref="ushort"/> to test.
@@ -1272,25 +1325,25 @@ namespace WebSocketSharp
     }
 
     /// <summary>
-    /// Determines whether the specified <see cref="string"/> is enclosed in the specified
-    /// <see cref="char"/>.
+    /// Determines whether the specified <see cref="string"/> is
+    /// enclosed in the specified <see cref="char"/>.
     /// </summary>
     /// <returns>
-    /// <c>true</c> if <paramref name="value"/> is enclosed in <paramref name="c"/>;
-    /// otherwise, <c>false</c>.
+    /// <c>true</c> if <paramref name="value"/> is enclosed in
+    /// <paramref name="c"/>; otherwise, <c>false</c>.
     /// </returns>
     /// <param name="value">
     /// A <see cref="string"/> to test.
     /// </param>
     /// <param name="c">
-    /// A <see cref="char"/> that represents the character to find.
+    /// A <see cref="char"/> to find.
     /// </param>
     public static bool IsEnclosedIn (this string value, char c)
     {
-      return value != null &&
-             value.Length > 1 &&
-             value[0] == c &&
-             value[value.Length - 1] == c;
+      return value != null
+             && value.Length > 1
+             && value[0] == c
+             && value[value.Length - 1] == c;
     }
 
     /// <summary>

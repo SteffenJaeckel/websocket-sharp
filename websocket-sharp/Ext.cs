@@ -872,14 +872,18 @@ namespace WebSocketSharp
       return String.Format ("{0}; {1}", m, parameters.ToString ("; "));
     }
 
-    internal static System.Net.IPAddress ToIPAddress (this string hostnameOrAddress)
+    internal static System.Net.IPAddress ToIPAddress (this string value)
     {
+      if (value == null || value.Length == 0)
+        return null;
+
       System.Net.IPAddress addr;
-      if (System.Net.IPAddress.TryParse (hostnameOrAddress, out addr))
+      if (System.Net.IPAddress.TryParse (value, out addr))
         return addr;
 
       try {
-        return System.Net.Dns.GetHostAddresses (hostnameOrAddress)[0];
+        var addrs = System.Net.Dns.GetHostAddresses (value);
+        return addrs[0];
       }
       catch {
         return null;
@@ -901,60 +905,65 @@ namespace WebSocketSharp
       return BitConverter.ToUInt64 (source.ToHostOrder (sourceOrder), 0);
     }
 
-    internal static string TrimEndSlash (this string value)
+    internal static string TrimSlashFromEnd (this string value)
     {
-      value = value.TrimEnd ('/');
-      return value.Length > 0 ? value : "/";
+      var ret = value.TrimEnd ('/');
+      return ret.Length > 0 ? ret : "/";
     }
 
     /// <summary>
-    /// Tries to create a <see cref="Uri"/> for WebSocket with
+    /// Tries to create a new <see cref="Uri"/> for WebSocket with
     /// the specified <paramref name="uriString"/>.
     /// </summary>
     /// <returns>
-    /// <c>true</c> if a <see cref="Uri"/> is successfully created; otherwise, <c>false</c>.
+    /// <c>true</c> if the <see cref="Uri"/> was successfully created;
+    /// otherwise, <c>false</c>.
     /// </returns>
     /// <param name="uriString">
     /// A <see cref="string"/> that represents a WebSocket URL to try.
     /// </param>
     /// <param name="result">
-    /// When this method returns, a <see cref="Uri"/> that represents a WebSocket URL,
-    /// or <see langword="null"/> if <paramref name="uriString"/> is invalid.
+    /// When this method returns, a <see cref="Uri"/> that
+    /// represents the WebSocket URL or <see langword="null"/>
+    /// if <paramref name="uriString"/> is invalid.
     /// </param>
     /// <param name="message">
-    /// When this method returns, a <see cref="string"/> that represents an error message,
-    /// or <see cref="String.Empty"/> if <paramref name="uriString"/> is valid.
+    /// When this method returns, a <see cref="string"/> that
+    /// represents an error message or <see langword="null"/>
+    /// if <paramref name="uriString"/> is valid.
     /// </param>
     internal static bool TryCreateWebSocketUri (
-      this string uriString, out Uri result, out string message)
+      this string uriString, out Uri result, out string message
+    )
     {
       result = null;
+      message = null;
 
       var uri = uriString.ToUri ();
       if (uri == null) {
-        message = "An invalid URI string: " + uriString;
+        message = "An invalid URI string.";
         return false;
       }
 
       if (!uri.IsAbsoluteUri) {
-        message = "Not an absolute URI: " + uriString;
+        message = "A relative URI.";
         return false;
       }
 
       var schm = uri.Scheme;
       if (!(schm == "ws" || schm == "wss")) {
-        message = "The scheme part isn't 'ws' or 'wss': " + uriString;
-        return false;
-      }
-
-      if (uri.Fragment.Length > 0) {
-        message = "Includes the fragment component: " + uriString;
+        message = "The scheme part is not 'ws' or 'wss'.";
         return false;
       }
 
       var port = uri.Port;
       if (port == 0) {
-        message = "The port part is zero: " + uriString;
+        message = "The port part is zero.";
+        return false;
+      }
+
+      if (uri.Fragment.Length > 0) {
+        message = "It includes the fragment component.";
         return false;
       }
 
@@ -966,9 +975,10 @@ namespace WebSocketSharp
                      schm,
                      uri.Host,
                      schm == "ws" ? 80 : 443,
-                     uri.PathAndQuery));
+                     uri.PathAndQuery
+                   )
+                 );
 
-      message = String.Empty;
       return true;
     }
 
@@ -1364,8 +1374,8 @@ namespace WebSocketSharp
     }
 
     /// <summary>
-    /// Determines whether the specified <see cref="System.Net.IPAddress"/> represents
-    /// a local IP address.
+    /// Determines whether the specified <see cref="System.Net.IPAddress"/>
+    /// represents a local IP address.
     /// </summary>
     /// <remarks>
     /// This local means NOT REMOTE for the current host.
@@ -1422,10 +1432,12 @@ namespace WebSocketSharp
     }
 
     /// <summary>
-    /// Determines whether the specified <see cref="string"/> is a predefined scheme.
+    /// Determines whether the specified <see cref="string"/> is
+    /// a predefined scheme.
     /// </summary>
     /// <returns>
-    /// <c>true</c> if <paramref name="value"/> is a predefined scheme; otherwise, <c>false</c>.
+    /// <c>true</c> if <paramref name="value"/> is a predefined scheme;
+    /// otherwise, <c>false</c>.
     /// </returns>
     /// <param name="value">
     /// A <see cref="string"/> to test.
@@ -1445,6 +1457,12 @@ namespace WebSocketSharp
       if (c == 'f')
         return value == "file" || value == "ftp";
 
+      if (c == 'g')
+        return value == "gopher";
+
+      if (c == 'm')
+        return value == "mailto";
+
       if (c == 'n') {
         c = value[1];
         return c == 'e'
@@ -1452,7 +1470,7 @@ namespace WebSocketSharp
                : value == "nntp";
       }
 
-      return (c == 'g' && value == "gopher") || (c == 'm' && value == "mailto");
+      return false;
     }
 
     /// <summary>
@@ -1502,7 +1520,8 @@ namespace WebSocketSharp
     /// Determines whether the specified <see cref="string"/> is a URI string.
     /// </summary>
     /// <returns>
-    /// <c>true</c> if <paramref name="value"/> may be a URI string; otherwise, <c>false</c>.
+    /// <c>true</c> if <paramref name="value"/> may be a URI string;
+    /// otherwise, <c>false</c>.
     /// </returns>
     /// <param name="value">
     /// A <see cref="string"/> to test.
@@ -1519,7 +1538,8 @@ namespace WebSocketSharp
       if (idx >= 10)
         return false;
 
-      return value.Substring (0, idx).IsPredefinedScheme ();
+      var schm = value.Substring (0, idx);
+      return schm.IsPredefinedScheme ();
     }
 
     /// <summary>
@@ -1907,17 +1927,18 @@ namespace WebSocketSharp
     /// Converts the specified <see cref="string"/> to a <see cref="Uri"/>.
     /// </summary>
     /// <returns>
-    /// A <see cref="Uri"/> converted from <paramref name="uriString"/>,
-    /// or <see langword="null"/> if <paramref name="uriString"/> isn't successfully converted.
+    /// A <see cref="Uri"/> converted from <paramref name="value"/> or
+    /// <see langword="null"/> if the convert has failed.
     /// </returns>
-    /// <param name="uriString">
+    /// <param name="value">
     /// A <see cref="string"/> to convert.
     /// </param>
-    public static Uri ToUri (this string uriString)
+    public static Uri ToUri (this string value)
     {
       Uri ret;
       Uri.TryCreate (
-        uriString, uriString.MaybeUri () ? UriKind.Absolute : UriKind.Relative, out ret);
+        value, value.MaybeUri () ? UriKind.Absolute : UriKind.Relative, out ret
+      );
 
       return ret;
     }
@@ -1926,30 +1947,34 @@ namespace WebSocketSharp
     /// URL-decodes the specified <see cref="string"/>.
     /// </summary>
     /// <returns>
-    /// A <see cref="string"/> that receives the decoded string,
-    /// or the <paramref name="value"/> if it's <see langword="null"/> or empty.
+    /// A <see cref="string"/> that receives the decoded string or
+    /// <paramref name="value"/> if it is <see langword="null"/> or empty.
     /// </returns>
     /// <param name="value">
     /// A <see cref="string"/> to decode.
     /// </param>
     public static string UrlDecode (this string value)
     {
-      return value != null && value.Length > 0 ? HttpUtility.UrlDecode (value) : value;
+      return value != null && value.Length > 0
+             ? HttpUtility.UrlDecode (value)
+             : value;
     }
 
     /// <summary>
     /// URL-encodes the specified <see cref="string"/>.
     /// </summary>
     /// <returns>
-    /// A <see cref="string"/> that receives the encoded string,
-    /// or <paramref name="value"/> if it's <see langword="null"/> or empty.
+    /// A <see cref="string"/> that receives the encoded string or
+    /// <paramref name="value"/> if it is <see langword="null"/> or empty.
     /// </returns>
     /// <param name="value">
     /// A <see cref="string"/> to encode.
     /// </param>
     public static string UrlEncode (this string value)
     {
-      return value != null && value.Length > 0 ? HttpUtility.UrlEncode (value) : value;
+      return value != null && value.Length > 0
+             ? HttpUtility.UrlEncode (value)
+             : value;
     }
 
     /// <summary>
